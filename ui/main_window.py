@@ -25,6 +25,7 @@ from ..simulations import (
 from .animation_widget import AnimationWidget
 from .styles import Styles
 from ..utils.logger import Logger
+from ui.components.tree_view import TreeView
 
 class RecursionVisualizer(QMainWindow):
     def __init__(self):
@@ -460,4 +461,21 @@ class RecursionVisualizer(QMainWindow):
     def closeEvent(self, event):
         self.logger.info("프로그램 종료")
         self.logger.cleanup()
-        super().closeEvent(event) 
+        super().closeEvent(event)
+
+    def _setup_update_timer(self):
+        """주기적 업데이트를 위한 타이머 설정"""
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self._update)
+        self.update_timer.start(16)  # ~60fps
+
+    def _update(self):
+        """UI 업데이트"""
+        try:
+            self.tree_view.call_tree.update_layout(
+                self.tree_view.width(),
+                self.tree_view.height()
+            )
+            self.tree_view.update()
+        except Exception as e:
+            self.logger.error(f"UI 업데이트 실패: {str(e)}") 
