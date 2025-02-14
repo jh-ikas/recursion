@@ -175,6 +175,9 @@ class CallTreeManager:
                     level_nodes[node.depth] = []
                 level_nodes[node.depth].append(node)
 
+            if not level_nodes:  # 노드가 없는 경우
+                return
+
             # 각 레벨별 간격 계산
             max_depth = max(level_nodes.keys())
             vertical_spacing = available_height / (max_depth + 1)

@@ -26,6 +26,7 @@ from .animation_widget import AnimationWidget
 from .styles import Styles
 from ..utils.logger import Logger
 from ui.components.tree_view import TreeView
+from config.settings import Settings
 
 class RecursionVisualizer(QMainWindow):
     def __init__(self):
@@ -40,12 +41,26 @@ class RecursionVisualizer(QMainWindow):
         self.dark_mode = False
         self.simulation_generator = None
         self.call_tree_manager = CallTreeManager()
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.process_next_step)
+        
+        # 타이머 초기화
+        self.simulation_timer = QTimer(self)
+        self.simulation_timer.timeout.connect(self.process_next_step)
+        
+        self.log_update_timer = QTimer(self)
+        self.log_update_timer.timeout.connect(self.update_log_viewer)
+        
+        self.layout_update_timer = QTimer(self)
+        self.layout_update_timer.timeout.connect(self.update_layout)
 
         self.initUI()
+        self._initialize_timers()
         self.applyStyles()
         self.logger.info("RecursionVisualizer 초기화 완료")
+
+    def _initialize_timers(self):
+        """타이머 초기화 및 시작"""
+        self.log_update_timer.start(Settings.UI.LOG_UPDATE_INTERVAL)
+        self.layout_update_timer.start(Settings.UI.LAYOUT_UPDATE_INTERVAL)
 
     def initUI(self):
         mainWidget = QWidget()
@@ -130,8 +145,11 @@ class RecursionVisualizer(QMainWindow):
         speedLabel = QLabel("실행 속도:")
         speedLabel.setStyleSheet("font-weight: bold;")
         self.speedSlider = QSlider(Qt.Horizontal)
-        self.speedSlider.setRange(100, 2000)
-        self.speedSlider.setValue(1000)
+        self.speedSlider.setRange(
+            Settings.UI.SIMULATION_SPEED_MIN,
+            Settings.UI.SIMULATION_SPEED_MAX
+        )
+        self.speedSlider.setValue(Settings.UI.SIMULATION_SPEED_DEFAULT)
         self.speedSlider.setFixedWidth(150)
         rightLayout.addWidget(speedLabel)
         rightLayout.addWidget(self.speedSlider)
@@ -180,6 +198,15 @@ class RecursionVisualizer(QMainWindow):
         self.animationWidget.setCallTreeManager(self.call_tree_manager)
         animLayout.addWidget(self.animationWidget)
         rightLayout.addWidget(animGroup)
+        
+        # 로그 뷰어
+        logGroup = QGroupBox("로그")
+        logLayout = QVBoxLayout(logGroup)
+        self.logViewer = QTextEdit()
+        self.logViewer.setReadOnly(True)
+        self.logViewer.setMaximumHeight(150)
+        logLayout.addWidget(self.logViewer)
+        rightLayout.addWidget(logGroup)
         
         # 결과 표시
         resultGroup = QWidget()
@@ -375,8 +402,9 @@ class RecursionVisualizer(QMainWindow):
                 k = min(n // 2, n)  # 기본값으로 n과 n//2 중 작은 값 사용
                 self.simulation_generator = CombinationSimulation.run(elements, k)
 
-            self.timer.setInterval(self.speedSlider.value())
-            self.timer.start()
+            self.simulation_timer.setInterval(self.speedSlider.value())
+            self.simulation_timer.start()
+            self.pauseButton.setText("일시정지")
             
         except ValueError as e:
             self.logger.error(f"입력값 오류: {str(e)}")
@@ -384,18 +412,21 @@ class RecursionVisualizer(QMainWindow):
         except Exception as e:
             self.logger.error(f"시뮬레이션 시작 오류: {str(e)}")
             self.resultLabel.setText(f"결과: 오류 발생 - {str(e)}")
+            self.simulation_timer.stop()
 
     def pauseSimulation(self):
-        if self.timer.isActive():
+        if self.simulation_timer.isActive():
             self.logger.info("시뮬레이션 일시정지")
-            self.timer.stop()
+            self.simulation_timer.stop()
+            self.pauseButton.setText("재개")
         else:
             self.logger.info("시뮬레이션 재개")
-            self.timer.start()
+            self.simulation_timer.start()
+            self.pauseButton.setText("일시정지")
 
     def resetSimulation(self):
         self.logger.info("시뮬레이션 리셋")
-        self.timer.stop()
+        self.simulation_timer.stop()
         self.simulation_generator = None
         self.callStackList.clear()
         self.call_tree_manager = CallTreeManager()
@@ -403,6 +434,7 @@ class RecursionVisualizer(QMainWindow):
         self.animationWidget.setMessage("")
         self.resultLabel.setText("결과: ")
         self.showCodeWithHighlight("")
+        self.pauseButton.setText("일시정지")
 
     def process_next_step(self):
         try:
@@ -411,11 +443,11 @@ class RecursionVisualizer(QMainWindow):
         except StopIteration:
             self.logger.info("시뮬레이션 완료")
             self.simulation_generator = None
-            self.timer.stop()
+            self.simulation_timer.stop()
         except Exception as e:
             self.logger.error(f"시뮬레이션 단계 처리 오류: {str(e)}")
             self.resultLabel.setText(f"결과: 에러 발생 - {str(e)}")
-            self.timer.stop()
+            self.simulation_timer.stop()
 
     def handle_simulation_step(self, step: SimulationStep):
         try:
@@ -458,24 +490,32 @@ class RecursionVisualizer(QMainWindow):
             self.logger.error(f"시뮬레이션 단계 처리 중 오류: {str(e)}")
             raise
 
+    def update_layout(self):
+        """레이아웃 업데이트"""
+        try:
+            self.animationWidget.call_tree.update_layout(
+                self.animationWidget.width(),
+                self.animationWidget.height()
+            )
+            self.animationWidget.update()
+        except Exception as e:
+            self.logger.error(f"레이아웃 업데이트 실패: {str(e)}")
+
+    def update_log_viewer(self):
+        """로그 뷰어 업데이트"""
+        try:
+            current_text = self.logViewer.toPlainText()
+            new_text = self.logger.get_logs()
+            
+            if current_text != new_text:
+                self.logViewer.setText(new_text)
+                scrollbar = self.logViewer.verticalScrollBar()
+                scrollbar.setValue(scrollbar.maximum())
+                
+        except Exception as e:
+            self.logger.error(f"로그 뷰어 업데이트 실패: {str(e)}")
+
     def closeEvent(self, event):
         self.logger.info("프로그램 종료")
         self.logger.cleanup()
-        super().closeEvent(event)
-
-    def _setup_update_timer(self):
-        """주기적 업데이트를 위한 타이머 설정"""
-        self.update_timer = QTimer(self)
-        self.update_timer.timeout.connect(self._update)
-        self.update_timer.start(16)  # ~60fps
-
-    def _update(self):
-        """UI 업데이트"""
-        try:
-            self.tree_view.call_tree.update_layout(
-                self.tree_view.width(),
-                self.tree_view.height()
-            )
-            self.tree_view.update()
-        except Exception as e:
-            self.logger.error(f"UI 업데이트 실패: {str(e)}") 
+        super().closeEvent(event) 

@@ -8,6 +8,10 @@ class UISettings:
     VERTICAL_SPACING: int = 75    # NODE_RADIUS * 3
     ANIMATION_SPEED: float = 0.1
     LAYOUT_UPDATE_INTERVAL: float = 0.016  # ~60fps
+    LOG_UPDATE_INTERVAL: float = 1000      # 1초
+    SIMULATION_SPEED_MIN: int = 100        # 최소 시뮬레이션 속도 (ms)
+    SIMULATION_SPEED_MAX: int = 2000       # 최대 시뮬레이션 속도 (ms)
+    SIMULATION_SPEED_DEFAULT: int = 1000   # 기본 시뮬레이션 속도 (ms)
 
 @dataclass
 class LogSettings:
