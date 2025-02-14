@@ -1,0 +1,7 @@
+2025-02-14 14:49:41,042 - RecursionVisualizer - INFO - RecursionVisualizer 초기화 시작
+2025-02-14 14:49:41,609 - RecursionVisualizer - INFO - RecursionVisualizer 초기화 완료
+2025-02-14 14:49:43,474 - RecursionVisualizer - INFO - 시뮬레이션 시작
+2025-02-14 14:49:43,474 - RecursionVisualizer - INFO - 시뮬레이션 리셋
+2025-02-14 14:49:44,492 - RecursionVisualizer - DEBUG - 함수 호출 추가: fibonacci(4)
+2025-02-14 14:49:44,540 - RecursionVisualizer - DEBUG - 성능 측정 - 레이아웃 업데이트: 0.001초
+2025-02-14 14:49:44,540 - RecursionVisualizer - DEBUG - 레이아웃 업데이트 - 전체 노드: 1, 수정된 노드: 1
